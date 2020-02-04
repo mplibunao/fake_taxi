@@ -3,12 +3,16 @@ defmodule FakeTaxi do
 
   @hook_templates "./lib/data.txt"
 
-  def start_link(%{order_id: order_id, endpoint: endpoint}) do
+  def start_link(%{order_id: order_id, endpoint: endpoint, delivery_id: delivery_id}) do
     hooks =
       @hook_templates
       |> File.read!()
       |> Jason.decode!()
       |> Enum.reverse()
+      |> Enum.map(fn data ->
+        Map.put(data, "deliveryId", delivery_id)
+      end)
+
     endpoint = "#{endpoint}/hooks/orkestro/#{order_id}"
 
     GenServer.start_link(FakeTaxi, %{hooks: hooks, endpoint: endpoint})
@@ -20,12 +24,14 @@ defmodule FakeTaxi do
     {:ok, state}
   end
 
-  def handle_info(:schedule_hook, %{hooks: [head | remaining], endpoint: endpoint} = params) do
+  @impl true
+  def handle_info(:schedule_hook, %{hooks: [head | remaining], endpoint: endpoint} = _params) do
     send_request(head, endpoint)
     schedule_hook()
     {:noreply, %{hooks: remaining, endpoint: endpoint}}
   end
 
+  @impl true
   def handle_info(:schedule_hook, state) do
     {:noreply, state}
   end
@@ -35,12 +41,13 @@ defmodule FakeTaxi do
   end
 
   defp send_request(request, endpoint) do
-    case HTTPoison.post(endpoint, Jason.encode!(request), ["Content-Type": "application/json"]) do
+    case HTTPoison.post(endpoint, Jason.encode!(request), "Content-Type": "application/json") do
       {:ok, result} ->
-        IO.puts inspect result
+        IO.puts(inspect(result))
         {:ok, result}
+
       {:error, error} ->
-        IO.puts inspect error
+        IO.puts(inspect(error))
         {:ok, error}
     end
   end
