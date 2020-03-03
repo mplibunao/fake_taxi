@@ -18,6 +18,38 @@ defmodule FakeTaxi do
     GenServer.start_link(FakeTaxi, %{hooks: hooks, endpoint: endpoint})
   end
 
+  def cancel(%{
+        order_id: order_id,
+        delivery_id: delivery_id,
+        endpoint: endpoint,
+        vehicle_type: vehicle_type
+      }) do
+    endpoint = "#{endpoint}/hooks/orkestro/#{order_id}"
+
+    send_request(
+      %{
+        "orderStatus" => "cancelled",
+        "deliveryStatus" => "failed",
+        "vehicleType" => vehicle_type,
+        "deliveryId" => delivery_id
+      },
+      endpoint
+    )
+  end
+
+  def schedule(%{order_id: order_id, delivery_id: delivery_id, endpoint: endpoint}) do
+    endpoint = "#{endpoint}/hooks/orkestro/#{order_id}"
+
+    send_request(
+      %{
+        "deliveryId" => delivery_id,
+        "orderStatus" => "cancelled",
+        "deliveryStatus" => "failed"
+      },
+      endpoint
+    )
+  end
+
   @impl true
   def init(state) do
     schedule_hook()
